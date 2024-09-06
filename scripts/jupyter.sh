@@ -1,0 +1,1 @@
+rye run jupyter-notebook --no-browser --port 8001 --ip $SLURM_NODELIST

@@ -1,0 +1,19 @@
+rye run gm-train \
+    --dataset  "/home/jlagesse/gnnco/data/CoraFull[500,0.12]" \
+    --experiment "CoraFull" \
+    --run-name "GAT CoraFull[500,0.12]" \
+    --epochs 500 \
+    --batch-size 200 \
+    --cuda \
+    --log-frequency 25 \
+    --profile \
+    --model GAT \
+        --layers 5 \
+        --heads 8 \
+        --features 128 \
+        --out-features 128 \
+    --optimizer adam-one-cycle \
+        --max-lr 3e-3 \
+        --start-factor 5 \
+        --end-factor 500 \
+        --grad-clip 0.1

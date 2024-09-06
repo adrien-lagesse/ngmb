@@ -1,0 +1,12 @@
+{
+    "files.exclude": {
+        ".tmp": true,
+        ".venv": true,
+        "**/__pycache__": true,
+        "mlruns": true,
+        ".python-version": true,
+        "requirements-dev.lock": true,
+        "requirements.lock": true,
+        ".ruff_cache": true,
+    }
+}

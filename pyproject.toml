@@ -1,0 +1,52 @@
+[project]
+name = "ngmb"
+version = "0.1.0"
+description = "The ngmb (Noisy Graph Matching Benchmark) package simplifies benchmarking GNNs on the graph alignement task (graph matching) with correlated pairs of graphs."
+dependencies = [
+    "numpy>=1.26.4",
+    "scipy>=1.12.0",
+    "torch>=2.2.2",
+    "torch-geometric>=2.5.2",
+    "safetensors>=0.4.2",
+    "click>=8.1.7",
+    "mlflow>=2.11.3",
+    "setuptools>=69.2.0",
+    "graphviz>=0.20.3",
+    "rdkit>=2023.9.5",
+    "pynvml>=11.5.0",
+    "ogb>=1.3.6",
+]
+readme = "README.md"
+requires-python = ">= 3.11"
+
+[project.scripts]
+gm-generate-er = "ngmb.graph_matching._scripts.generate_erdos_renyi:main"
+gm-generate-aqsol = "ngmb.graph_matching._scripts.generate_aqsol:main"
+gm-generate-karateclub = "ngmb.graph_matching._scripts.generate_karate_club:main"
+gm-generate-corafull = "ngmb.graph_matching._scripts.generate_cora_full:main"
+gm-generate-ogbn-arxiv = "ngmb.graph_matching._scripts.generate_ogbn_arxiv:main"
+gm-generate-pcqm4mv2 = "ngmb.graph_matching._scripts.generate_pcqm4mv2:main"
+
+gm-data-stats = "ngmb.graph_matching._scripts.data_stats:main"
+
+gm-train = "ngmb.graph_matching._scripts.train:main"
+gm-laplacian-performances = "ngmb.graph_matching._scripts.laplacian_performances:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "ruff>=0.3.5",
+    "ipython>=8.22.2",
+    "ipykernel>=6.29.4",
+    "notebook>=7.2.1",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = false
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ngmb"]
