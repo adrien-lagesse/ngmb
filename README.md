@@ -1,6 +1,6 @@
 # Benchmarking GNNs by aligning graphs
 
-The `ngmb` (**Noisy Graph Matching Benchmark**) package simplifies benchmarking GNNs on the graph alignement task (graph matching) with correlated pairs of graphs .
+The `ngmb` (**Noisy Graph Matching Benchmark**) package simplifies benchmarking GNNs on the graph alignement task (graph matching) with correlated pairs of graphs.
 It is based on PyTorch and the default models are written using the Pytorch Geometric package.
 
 Several functionalities are provided:
