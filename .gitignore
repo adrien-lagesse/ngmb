@@ -133,4 +133,5 @@ dmypy.json
 # Project related
 mlruns/
 sbatch-output
+sbatch-error
 .tmp

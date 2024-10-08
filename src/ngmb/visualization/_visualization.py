@@ -12,6 +12,16 @@ def plot_graph(
     size: float = 8,
     coordinates: dict[int, tuple[float, float]] | None = None,
 ) -> graphviz.Graph:
+    """
+    Plot a `ngmb.SparseGraph` or `ngmb.DenseGraph`.
+    ### Arguments:
+    - graph: a `ngmb` graph object.
+    - size: graph size.
+    - coordinates: a dictionary mapping each node `i` to (x(i),y(i))
+
+    ### Returns:
+    graphviz.Graph
+    """
     dot = graphviz.Graph(strict=True)
     dot.graph_attr = {"size": str(size), "layout": "neato", "overlap": "scale"}
     dot.node_attr = {
@@ -45,12 +55,22 @@ def plot_similarities(
     size: float = 8,
     coordinates: dict[int, tuple[float, float]] | None = None,
 ) -> graphviz.Graph:
+    """
+    Plot a the intensity of a similiraty matrix on a  `ngmb.SparseGraph` or `ngmb.DenseGraph` for a given node.
+    ### Arguments:
+    - graph: a `ngmb` graph object.
+    - node: reference node.
+    - similarity_matrix: S[i,j] = similarity between node i and j
+    - size: graph size.
+    - coordinates: a dictionary mapping each node `i` to (x(i),y(i))
+
+    ### Returns:
+    graphviz.Graph
+    """
+
     softmax_matrix = (similarity_matix - similarity_matix[node].min()) / (
         similarity_matix[node].max() - similarity_matix[node].min()
     )
-    # colormap = clr.LinearSegmentedColormap.from_list(
-    #     "similarity_cm", ["#a9d6e5", "#012a4a"]
-    # )
     colormap = colormaps.get("viridis")
     dot = graphviz.Graph(strict=True)
     dot.graph_attr = {"size": str(size), "layout": "neato"}
@@ -89,6 +109,19 @@ def compare_graphs(
     size: float = 8,
     coordinates: dict[int, tuple[float, float]] | None = None,
 ) -> graphviz.Graph:
+    """
+    Compare the structural difference between graph1 and graph2.
+
+    ### Arguments:
+    - graph1: a `ngmb` graph object.
+    - graph1: a `ngmb` graph object.
+
+    - size: graph size.
+    - coordinates: a dictionary mapping each node `i` to (x(i),y(i))
+
+    ### Returns:
+    graphviz.Graph
+    """
     dot = graphviz.Graph(strict=True)
     if coordinates is None:
         dot.graph_attr = {"size": str(size)}

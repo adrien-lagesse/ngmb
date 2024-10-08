@@ -6,7 +6,6 @@ import random
 from typing import Literal
 
 import torch
-from tqdm.auto import tqdm
 
 from ngmb._core import BatchedDenseGraphs, BatchedSparseGraphs, SparseGraph
 
@@ -20,7 +19,14 @@ def erdos_renyi(
     self_loops: bool | None = False,
 ) -> BatchedDenseGraphs:
     """
-    Generate a batch of random Erdos-Renyi graphs
+    Generate a batch of random Erdös-Rényi graphs.
+
+    ### Arguments:
+    - nb_graphs: Number of graphs to generate.
+    - order: number of nodes in each graph.
+    - p: edge probability.
+    - directed: if false the graph will be undirected.
+    - self_loops: if None, there might be self loops, if False all self loops will be removed, if true they will be added.
     """
 
     assert 0.0 <= p <= 1, "'p' must be between 0 and 1"
@@ -43,23 +49,16 @@ def erdos_renyi(
 
 @torch.vmap
 def __graph_normalization(adj_matrix: torch.Tensor, mask: torch.BoolTensor):
+    """
+    density/(1-density) with the same shape as adj_matrix
+    """
     order = mask.sum()
     avg_degree = adj_matrix.masked_fill(mask.logical_not(), 0).float().sum() / (
         order - 1
     )
     degrees_matrix = torch.empty_like(adj_matrix, dtype=torch.float)
     degrees_matrix.fill_(avg_degree)
-    return degrees_matrix / (order - 1 - degrees_matrix)
-
-
-@torch.vmap
-def __node_normalization(adj_matrix: torch.Tensor, mask: torch.BoolTensor):
-    order = mask.sum()
-    degrees = (
-        adj_matrix.masked_fill(mask.logical_not(), 0).sum(dim=1).reshape(-1, 1).float()
-    )
-    degrees_matrix = torch.sqrt(degrees @ degrees.T)
-    return torch.nan_to_num(degrees_matrix / (order - 1 - degrees_matrix), 0.0)
+    return (degrees_matrix / (order - 1 - degrees_matrix)).nan_to_num(0, 1)
 
 
 def bernoulli_corruption(
@@ -68,41 +67,37 @@ def bernoulli_corruption(
     *,
     directed: bool = False,
     self_loops: bool = False,
-    type: Literal["full", "graph_normalized", "node_normalized"] = "node_normalized",
-    no_remove: bool = False,
+    type: Literal["add", "add_remove"],
 ) -> BatchedDenseGraphs:
     """
-    Apply a Bernoulli corruption to each graph in the batch
+    Apply a Bernoulli corruption to each graph in the batch.
+
+    ### Arguments:
+    - batch: graph to corrupt
+    - noise: amount of noise to apply
+    - directed: if false, the perturbatation will be symmetric
+    - self_loops: if false, will not add or remove self loops
+    - type: wether to add and remove edges or just to add them.
     """
 
     assert 0.0 <= noise <= 1, "'noise' must be between 0 and 1"
 
     masks = batch.get_masks()
+
     stacked_adjacency_matrices = batch.get_stacked_adj()
 
-    edge_noise = torch.empty_like(
-        stacked_adjacency_matrices,
-        dtype=torch.bool,
-    ).bernoulli_(noise)
+    normalization_tensor = __graph_normalization(stacked_adjacency_matrices, masks)
 
-    if type == "full":
-        normalization_tensor = torch.ones_like(stacked_adjacency_matrices)
-    elif type == "graph_normalized":
-        normalization_tensor = __graph_normalization(stacked_adjacency_matrices, masks)
-    elif type == "node_normalized":
-        normalization_tensor = __node_normalization(stacked_adjacency_matrices, masks)
-    else:
-        raise RuntimeError("Unimplemented")
-
-    if no_remove:
-        nonedge_noise = torch.empty_like(
-            stacked_adjacency_matrices,
-            dtype=torch.bool,
+    if type == "add_remove":
+        edge_noise = torch.empty_like(
+            stacked_adjacency_matrices, dtype=torch.bool
         ).bernoulli_(noise)
-    else:
-        nonedge_noise = torch.bernoulli(
-            torch.clip(noise * normalization_tensor, 0, 1)
-        ).bool()
+    if type == "add":
+        edge_noise = torch.zeros_like(stacked_adjacency_matrices, dtype=torch.bool)
+
+    nonedge_noise = torch.empty_like(
+        stacked_adjacency_matrices, dtype=torch.bool
+    ).bernoulli_(torch.clip(noise * normalization_tensor, 0, 1))
 
     if not directed:
         tri_up = edge_noise.triu()
@@ -117,8 +112,7 @@ def bernoulli_corruption(
         nonedge_noise[:, idx, idx] = False
 
     corrupted_batch = stacked_adjacency_matrices.clone()
-    if not no_remove:
-        corrupted_batch[stacked_adjacency_matrices & edge_noise] = False
+    corrupted_batch[stacked_adjacency_matrices & edge_noise] = False
     corrupted_batch[torch.logical_not(stacked_adjacency_matrices) & nonedge_noise] = (
         True
     )
@@ -132,6 +126,10 @@ def bernoulli_corruption(
 def uniform_sub_sampling(
     graph: SparseGraph, n: int, num_nodes: int
 ) -> BatchedSparseGraphs:
+    """
+    Randomly sample num_nodes nodes from the graph and extract the graph spanning on those nodes.
+    Repeat the process n times to build a batch.
+    """
     order = graph.order()
 
     graphs_l: list[SparseGraph] = []
@@ -145,10 +143,14 @@ def uniform_sub_sampling(
 def bfs_sub_sampling(
     graph: SparseGraph, n: int, num_nodes: int, *, p: float = 1
 ) -> BatchedSparseGraphs:
+    """
+    Sample with the Breadth First Search Method num_nodes nodes from the graph and extract the graph spanning on those nodes.
+    Repeat the process n times to build a batch.
+    """
     (senders, receivers) = graph.edge_index()
     graphs_l: list[SparseGraph] = []
 
-    for _ in tqdm(range(n), total=n):
+    for _ in range(n):
         base_node = random.randint(0, graph.order() - 1)
         kept_nodes: set[int] = {base_node}
         while len(kept_nodes) < num_nodes:
@@ -169,7 +171,6 @@ def bfs_sub_sampling(
                     kept_nodes = kept_nodes.union(
                         random.sample(sorted(new_nodes), num_nodes - len(kept_nodes))
                     )
-
         graphs_l.append(graph.node_sub_sample(torch.LongTensor(list(kept_nodes))))
 
     return BatchedSparseGraphs.from_graphs(graphs_l)

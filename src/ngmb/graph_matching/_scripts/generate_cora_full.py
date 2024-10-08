@@ -3,11 +3,11 @@ import pathlib
 
 import click
 import torch
-from ngmb import BatchedDenseGraphs, SparseGraph
-from ngmb.random import bernoulli_corruption, bfs_sub_sampling
 from safetensors.torch import save_file
 from torch_geometric.datasets import CoraFull
-from tqdm.auto import tqdm
+
+from ngmb import BatchedDenseGraphs, SparseGraph
+from ngmb.random import bernoulli_corruption, bfs_sub_sampling
 
 
 @click.command()
@@ -65,7 +65,7 @@ def graph_matching_cora_full(
 
             subsampled_graphs = bfs_sub_sampling(corafull_graph, N, order)
 
-            for i in tqdm(range(N), total=N):
+            for i in range(N):
                 base_graph_sparse = subsampled_graphs[i]
 
                 base_graphs_dict[str(i)] = base_graph_sparse.edge_index()
@@ -80,7 +80,7 @@ def graph_matching_cora_full(
                 corrupted_graph_dense = bernoulli_corruption(
                     BatchedDenseGraphs.from_graphs([base_graph_dense]),
                     noise,
-                    type="node_normalized",
+                    type="add_remove",
                 )[0]
                 corrupted_graphs_dict[str(i)] = corrupted_graph_dense.edge_index()
 
@@ -100,10 +100,8 @@ def graph_matching_cora_full(
         )
 
     print()
-    print("------ Generating the training dataset   ------")
     generate_and_save(n_graphs, prefix="train")
     print()
-    print("------ Generating the validation dataset -----")
     generate_and_save(n_val_graphs, prefix="val")
 
 

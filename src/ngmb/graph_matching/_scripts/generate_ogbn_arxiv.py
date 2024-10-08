@@ -3,11 +3,11 @@ import pathlib
 
 import click
 import torch
-from ngmb import BatchedDenseGraphs, SparseGraph
-from ngmb.random import bernoulli_corruption, bfs_sub_sampling
 from ogb.nodeproppred import PygNodePropPredDataset
 from safetensors.torch import save_file
-from tqdm.auto import tqdm
+
+from ngmb import BatchedDenseGraphs, SparseGraph
+from ngmb.random import bernoulli_corruption, bfs_sub_sampling
 
 
 @click.command()
@@ -64,23 +64,20 @@ def graph_matching_ogbn_arxiv(
             ).to(device)
 
             subsampled_graphs = bfs_sub_sampling(corafull_graph, N, order)
-
-            for i in tqdm(range(N), total=N):
-                base_graph_sparse = subsampled_graphs[i]
-
+            for i, base_graph_sparse in enumerate(subsampled_graphs):
                 base_graphs_dict[str(i)] = base_graph_sparse.edge_index()
-
                 orders_dict[str(i)] = torch.tensor(
                     [base_graph_sparse.order(), base_graph_sparse.order()],
                     dtype=torch.long,
                 )
-
                 base_graph_dense = base_graph_sparse.to_dense()
 
+                batch = BatchedDenseGraphs.from_graphs([base_graph_dense])
+
                 corrupted_graph_dense = bernoulli_corruption(
-                    BatchedDenseGraphs.from_graphs([base_graph_dense]),
+                    batch,
                     noise,
-                    type="node_normalized",
+                    type="add_remove",
                 )[0]
                 corrupted_graphs_dict[str(i)] = corrupted_graph_dense.edge_index()
 
@@ -88,7 +85,6 @@ def graph_matching_ogbn_arxiv(
             orders_dict,
             filename=os.path.join(output_dir, f"{prefix}-orders.safetensors"),
         )
-
         save_file(
             base_graphs_dict,
             filename=os.path.join(output_dir, f"{prefix}-base-graphs.safetensors"),
@@ -100,10 +96,8 @@ def graph_matching_ogbn_arxiv(
         )
 
     print()
-    print("------ Generating the training dataset   ------")
     generate_and_save(n_graphs, prefix="train")
     print()
-    print("------ Generating the validation dataset -----")
     generate_and_save(n_val_graphs, prefix="val")
 
 

@@ -16,44 +16,13 @@ from ngmb._core import BatchedSignals
 
 from .utils import (
     GMDatasetBatch,
-    build_visualization_batch,
     get_kwargs,
     model_factory,
     optimizer_factory,
     setup_data,
 )
 
-# @torch.compile
-# def siamese_similarity(
-#         model: torch.nn.Module, batch: GMDatasetBatch
-# )-> torch.FloatTensor:
-#     embeddings_base: BatchedSignals = model.forward(
-#         batch.base_signals, batch.base_graphs
-#     )
 
-#     embeddings_corrupted: BatchedSignals = model.forward(
-#         batch.corrupted_signals, batch.corrupted_graphs
-#     )
-
-#     alignement_similarities = torch.bmm(
-#         embeddings_base.x().reshape((
-#                 batch.base_node_masks.shape[0],
-#                 batch.base_node_masks.shape[1],
-#                 embeddings_base.dim(),
-#             )),
-#         embeddings_corrupted.x().reshape(
-#             (
-#                 batch.corrupted_node_masks.shape[0],
-#                 batch.corrupted_node_masks.shape[1],
-#                 embeddings_corrupted.dim(),
-#             )
-#         ).transpose(1, 2),
-#     )
-
-#     return alignement_similarities
-
-
-# @torch.compile
 def siamese_similarity(
     model: torch.nn.Module, batch: GMDatasetBatch
 ) -> torch.FloatTensor:
@@ -102,16 +71,6 @@ def siamese_similarity(
 
     return alignement_similarities
 
-
-# def __compute_losses(
-#     similarity_matrices: torch.FloatTensor, masks: torch.BoolTensor
-# ) -> torch.FloatTensor:
-#     diag_logits = torch.diagonal(torch.softmax(similarity_matrices, dim=-1), dim1=-2, dim2=-1)
-#     losses = -torch.log(diag_logits + 1e-7).mean(dim=-1)
-#     assert losses.shape == torch.Size([len(similarity_matrices),]), f"Wrong loss shape: {losses.shape}"
-#     return losses
-
-
 @torch.vmap
 def __compute_losses(
     similarity_matrix: torch.FloatTensor, mask: torch.BoolTensor
@@ -123,7 +82,6 @@ def __compute_losses(
     return loss
 
 
-# @torch.compile
 def compute_losses(
     similarity_matrices: torch.FloatTensor, masks: torch.BoolTensor
 ) -> torch.FloatTensor:
@@ -141,38 +99,6 @@ class AccuraciesResults(NamedTuple):
     top1: torch.FloatTensor
     top3: torch.FloatTensor
     top5: torch.FloatTensor
-
-
-# def __top_k_accuracy(
-#     alignement_similarity: torch.FloatTensor, mask: torch.BoolTensor, top_n: int
-# ) -> torch.FloatTensor:
-#     _, indices = torch.sort(
-#         torch.masked_fill(
-#             alignement_similarity, torch.logical_not(mask), -float("inf")
-#         ),
-#         descending=True,
-#     )
-#     mask = mask.float()
-#     m = (
-#         torch.isin(torch.arange(len(alignement_similarity), device=alignement_similarity.device), indices[:, :top_n])
-#         .float()
-#         .squeeze()
-#     )
-#     acc = (m * mask).sum() / (mask.sum())
-#     return acc
-
-
-# @torch.no_grad
-# def compute_accuracies(
-#     alignement_similarities: torch.FloatTensor, masks: torch.BoolTensor
-# ) -> AccuraciesResults:
-#     batched_top_k_accuracy = torch.vmap(__top_k_accuracy, in_dims=(0, 0, None))
-#     return AccuraciesResults(
-#         top1=batched_top_k_accuracy(alignement_similarities, masks, 1),
-#         top3=batched_top_k_accuracy(alignement_similarities, masks, 3),
-#         top5=batched_top_k_accuracy(alignement_similarities, masks, 5),
-#     )
-
 
 def compute_accuracies(
     alignement_similarities: torch.FloatTensor, masks: torch.BoolTensor
@@ -246,7 +172,7 @@ def compute_lap(
 
     return LAPResults(permutations=permuations, lap=lap)
 
-
+@torch.no_grad
 def compute_metrics(
     model: torch.nn.Module,
     loader: torch.utils.data.DataLoader,
@@ -300,17 +226,6 @@ def log_visualizations(
         graph_order = batch.base_graphs[i].order()
 
         if step == 0:
-            # dot_graph = compare_graphs(batch.base_graphs[i], batch.corrupted_graphs[i])
-            # graph_path = unquote(
-            #     urlparse(run.info.artifact_uri + f"{prefix}/graph[{i}]").path
-            # )
-            # dot_graph.render(
-            #     "graph-comp",
-            #     directory=graph_path,
-            #     cleanup=True,
-            #     format="svg",
-            # )
-
             plt.imshow(batch.base_graphs[i].adj().float().detach().cpu().numpy())
             mlflow.log_figure(plt.gcf(), f"{prefix}/graph[{i}]/adj.png")
 
@@ -375,13 +290,10 @@ def train(
         mlflow.log_params(get_kwargs())
 
         # Load the training and validation datasets and build suitable loaders to batch the graphs together.
-        (train_dataset, val_dataset, train_loader, val_loader) = setup_data(
+        (_, _, train_loader, val_loader) = setup_data(
             dataset_path=dataset,
             batch_size=batch_size,
         )
-
-        visualization_batch_train = build_visualization_batch(train_dataset, 1)
-        visualization_batch_val = build_visualization_batch(val_dataset, 1)
 
         # Setting up the GNN model and loading it onto the gpu if needed
         gnn_model: torch.nn.Module
@@ -444,12 +356,6 @@ def train(
                 mlflow.log_metrics(train_metrics, epoch)
                 mlflow.log_metrics(val_metrics, epoch)
 
-                log_visualizations(
-                    run, gnn_model, visualization_batch_train, "train", device, epoch
-                )
-                log_visualizations(
-                    run, gnn_model, visualization_batch_val, "val", device, epoch
-                )
             mlflow.log_metric("log_time", time.time() - logging_start_time, epoch)
 
             # Training loop

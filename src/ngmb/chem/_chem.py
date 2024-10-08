@@ -6,6 +6,12 @@ from ngmb._core import DenseGraph
 
 
 def smiles_to_graph(smiles: str) -> tuple[DenseGraph, dict[int, tuple[float, float]]]:
+    """
+    Extract the graph representation of a molecule from its SMILES.
+    ### Returns:
+    - graph
+    - layout dict
+    """
     mol = Chem.MolFromSmiles(smiles)
     # mol = Chem.AddHs(mol)
     adjacency_matrix = Chem.GetAdjacencyMatrix(mol, useBO=True)

@@ -5,6 +5,7 @@ import click
 import mlflow
 import torch
 from matplotlib import pyplot as plt
+
 from ngmb.graph_matching import (
     GMDatasetBatch,
     compute_metrics,
@@ -98,8 +99,8 @@ def compute_laplacian_performances(
             batch_size=batch_size,
         )
 
-        visualization_batch_train = build_visualization_batch(train_dataset, 1)
-        visualization_batch_val = build_visualization_batch(val_dataset, 1)
+        # visualization_batch_train = build_visualization_batch(train_dataset, 1)
+        # visualization_batch_val = build_visualization_batch(val_dataset, 1)
 
         gnn_model: torch.nn.Module = LaplacianEmbeddings(k=features)
 
@@ -116,8 +117,8 @@ def compute_laplacian_performances(
         mlflow.log_metrics(train_metrics)
         mlflow.log_metrics(val_metrics)
 
-        log_visualizations(run, gnn_model, visualization_batch_train, "train", device)
-        log_visualizations(run, gnn_model, visualization_batch_val, "val", device)
+        # log_visualizations(run, gnn_model, visualization_batch_train, "train", device)
+        # log_visualizations(run, gnn_model, visualization_batch_val, "val", device)
 
 
 def main():

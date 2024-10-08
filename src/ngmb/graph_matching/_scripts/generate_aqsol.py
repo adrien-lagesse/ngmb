@@ -3,11 +3,11 @@ import pathlib
 
 import click
 import torch
-from ngmb import BatchedDenseGraphs, SparseGraph
-from ngmb.random import bernoulli_corruption
 from safetensors.torch import save_file
 from torch_geometric.datasets import AQSOL
-from tqdm.auto import tqdm
+
+from ngmb import BatchedDenseGraphs, SparseGraph
+from ngmb.random import bernoulli_corruption
 
 
 @click.command()
@@ -56,27 +56,20 @@ def graph_matching_aqsol(
                 for data in sparse_dataset
             ]
 
-            for i, base_graph_sparse in tqdm(
-                enumerate(sparse_graphs), total=len(sparse_graphs)
-            ):
+            for i, base_graph_sparse in enumerate(sparse_graphs):
                 orders_dict[str(i)] = torch.tensor(
                     [base_graph_sparse.order(), base_graph_sparse.order()],
                     dtype=torch.long,
                 )
-                base_graph_dense = base_graph_sparse.to_dense()
 
-                base_graphs_dict[str(i)] = bernoulli_corruption(
-                    BatchedDenseGraphs.from_graphs([base_graph_dense]),
-                    noise,
-                    type="node_normalized",
-                    no_remove=True,
-                )[0].edge_index()
+                base_graphs_dict[str(i)] = base_graph_sparse.edge_index()
+
+                base_graph_dense = base_graph_sparse.to_dense()
 
                 corrupted_graphs_dict[str(i)] = bernoulli_corruption(
                     BatchedDenseGraphs.from_graphs([base_graph_dense]),
                     noise,
-                    type="node_normalized",
-                    no_remove=True,
+                    type="add",
                 )[0].edge_index()
 
         save_file(
@@ -95,10 +88,8 @@ def graph_matching_aqsol(
         )
 
     print()
-    print("------ Generating the training dataset   ------")
     generate_and_save(train_dataset, prefix="train")
     print()
-    print("------ Generating the validation dataset -----")
     generate_and_save(validation_dataset, prefix="val")
 
 

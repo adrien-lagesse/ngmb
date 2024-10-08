@@ -4,8 +4,9 @@ import pathlib
 
 import click
 import torch
-from ngmb.random import bernoulli_corruption, erdos_renyi
 from safetensors.torch import save_file
+
+from ngmb.random import bernoulli_corruption, erdos_renyi
 
 
 @click.command()
@@ -51,7 +52,7 @@ def graph_matching_erdos_renyi(
             p_edge = density / (order - 1)
             base_graphs = erdos_renyi(N, order, p_edge)
             corrupted_graphs = bernoulli_corruption(
-                base_graphs, noise=noise, type="node_normalized"
+                base_graphs, noise=noise, type="add_remove"
             )
 
         save_file(

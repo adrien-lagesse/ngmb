@@ -1,17 +1,18 @@
+nvidia-smi
+
 rye run gm-train \
-    --dataset  "/home/jlagesse/gnnco/data/CoraFull[500,0.12]" \
-    --experiment "CoraFull" \
-    --run-name "GAT CoraFull[500,0.12]" \
+    --dataset  "/scratch/jlagesse/ngmb-data/PCQM4Mv2[0.04]" \
+    --experiment "PCQM4Mv2-PE" \
+    --run-name "GatedGCN-small PCQM4Mv2[0.04]" \
     --epochs 500 \
-    --batch-size 200 \
+    --batch-size 100 \
     --cuda \
     --log-frequency 25 \
     --profile \
-    --model GAT \
-        --layers 5 \
-        --heads 8 \
-        --features 128 \
-        --out-features 128 \
+    --model GatedGCN \
+        --layers 4\
+        --features 48 \
+        --out-features 32 \
     --optimizer adam-one-cycle \
         --max-lr 3e-3 \
         --start-factor 5 \

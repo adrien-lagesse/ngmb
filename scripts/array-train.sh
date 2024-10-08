@@ -14,23 +14,22 @@
 set -x
 cd ${SLURM_SUBMIT_DIR}
 
-noises=(0.01 0.02 0.04 0.06 0.08 0.12 0.18 0.24 0.3 0.35)
+noises=(0.04 0.06 0.08 0.12 0.15 0.18 0.24 0.3)
 
-echo ${noises[${SLURM_ARRAY_TASK_ID}]}
+nvidia-smi
 
 rye run gm-train \
-    --dataset  "/scratch/jlagesse/ngmb/PCQM4Mv2[${noises[${SLURM_ARRAY_TASK_ID}]}]" \
-    --experiment "PCQM4Mv2" \
-    --run-name "GAT-Large PCQM4Mv2[${noises[${SLURM_ARRAY_TASK_ID}]}]" \
+    --dataset  "/scratch/jlagesse/ngmb-data/CoraFull[100,${noises[${SLURM_ARRAY_TASK_ID}]}]" \
+    --experiment "CoraFull-small" \
+    --run-name "GatedGCN-small CoraFull[100,${noises[${SLURM_ARRAY_TASK_ID}]}]" \
     --epochs 500 \
-    --batch-size 1000 \
+    --batch-size 100 \
     --cuda \
     --log-frequency 25 \
     --profile \
-    --model GAT \
-        --layers 6 \
-        --heads 12 \
-        --features 240 \
+    --model GatedGCN \
+        --layers 4\
+        --features 48 \
         --out-features 64 \
     --optimizer adam-one-cycle \
         --max-lr 3e-3 \

@@ -4,7 +4,7 @@ Module defining the GMDataset and GMDatasetItem classes to iteract with a Graph 
 
 import os
 import os.path
-from typing import NamedTuple, Self  # , override
+from typing import NamedTuple, Self, override
 
 import torch.utils.data
 from safetensors.torch import load_file
@@ -71,14 +71,14 @@ class GMDataset(torch.utils.data.Dataset):
         except:  # noqa: E722
             raise RuntimeError("Unable to load database")
 
-    # @override
+    @override
     def __len__(self) -> int:
         """
         Number of GMDatasetItem into the dataset.
         """
         return len(self.corrupted_graphs)
 
-    # @override
+    @override
     def __getitem__(self, index) -> GMDatasetItem:
         """
         Return the index-th GMDatasetItem in the dataset.
@@ -95,12 +95,12 @@ class GMDataset(torch.utils.data.Dataset):
                 self.corrupted_graphs[index],
             )
 
-    # @override
+    @override
     def __iter__(self) -> Self:
         self.iter_index = 0
         return self
 
-    # @override
+    @override
     def __next__(
         self,
     ) -> GMDatasetItem:
@@ -111,6 +111,6 @@ class GMDataset(torch.utils.data.Dataset):
         else:
             raise StopIteration
 
-    # @override
+    @override
     def __repr__(self) -> str:
         return f"GMDataset({len(self)})"

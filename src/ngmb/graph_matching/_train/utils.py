@@ -6,9 +6,9 @@ from typing import Literal, NamedTuple, Self
 import torch
 import torch.utils.data
 
-from ..._core import BatchedSignals, BatchedSparseGraphs
-from ...models import GAT, GCN, GIN, GatedGCN, GATv2
-from .._dataset import GMDataset, GMDatasetItem
+from ngmb._core import BatchedSignals, BatchedSparseGraphs
+from ngmb.graph_matching._dataset import GMDataset, GMDatasetItem
+from ngmb.models import GAT, GCN, GIN, GatedGCN, GATv2
 
 
 def get_kwargs():
@@ -172,11 +172,11 @@ def optimizer_factory(
     Create the optimizer and scheduler
     """
     if optimizer == "adam":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=1)
+        optimizer = torch.optim.AdamW(model.parameters(), weight_decay=0.08)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda epoch: lr)
         return optimizer, scheduler
     elif optimizer == "adam-one-cycle":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=1)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=1, weight_decay=0.08)
         scheduler = torch.optim.lr_scheduler.LambdaLR(
             optimizer,
             partial(

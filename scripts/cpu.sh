@@ -1,4 +1,4 @@
 salloc --time=47:00:00 \
-       --mincpus=8 \
-       --mem=20G \
+       --mincpus=16 \
+       --mem=64G \
        

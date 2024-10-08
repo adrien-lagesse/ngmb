@@ -42,21 +42,24 @@ def gm_dataset_stats(dataset: pathlib.Path, text: bool):
 
             min_node = min(item.base_graph.order(), item.corrupted_graph.order())
             min_size = min(item.base_graph.size(), item.corrupted_graph.size())
-            if min_size > 0:
+            if min_size > 1:
+                max_edges = min_node * (min_node - 1)
+                d_common = (
+                    item.base_graph.adj()[:min_node, :min_node]
+                    * item.corrupted_graph.adj()[:min_node, :min_node]
+                ).sum() / max_edges + 1e-7
+                d1 = (
+                    item.base_graph.adj()[:min_node, :min_node].sum() / max_edges + 1e-7
+                )
+                d2 = (
+                    item.corrupted_graph.adj()[:min_node, :min_node].sum() / max_edges
+                    + 1e-7
+                )
                 graph_stats["correlation"].append(
-                    float(
-                        (
-                            item.base_graph.adj()[:min_node, :min_node]
-                            * item.corrupted_graph.adj()[:min_node, :min_node]
-                        ).sum()
-                        / torch.sqrt(
-                            item.base_graph.adj().sum()
-                            * item.corrupted_graph.adj().sum()
-                        )
-                    )
+                    float(torch.abs(d_common - d1 * d2) / torch.sqrt(d1 * (1 - d1) * d2*(1 - d1)))
                 )
             else:
-                graph_stats["correlation"].append(0.0)
+                graph_stats["correlation"].append(1.0)
         return nb_graphs, graph_stats
 
     def print_text_stats(training: bool = True) -> None:

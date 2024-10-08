@@ -1,3 +1,7 @@
+"""
+Pytorch Geometric GNN models
+"""
+
 __all__ = ["GCN", "GIN", "GAT", "GatedGCN", "GATv2", "LaplacianEmbeddings"]
 
 from ._gat import GAT

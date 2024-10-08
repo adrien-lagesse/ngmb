@@ -95,7 +95,7 @@ class SparseGraph:
 
     def edge_index(self) -> torch.LongTensor:
         """
-        Returns the edge index matrix of dim [2,num_edges] (used in torch_geometric).
+        Returns the edge index matrix of dim [2,num_edges].
         """
         return torch.vstack([self._senders, self._receivers])
 
@@ -106,6 +106,9 @@ class SparseGraph:
         return BatchedSparseGraphs.from_graphs([self])
 
     def node_sub_sample(self, nodes_sample: torch.LongTensor) -> Self:
+        """
+        Returns the graph only containing the nodes in `nodes_sample`.
+        """
         mask = torch.logical_and(
             torch.isin(self._senders, nodes_sample),
             torch.isin(self._receivers, nodes_sample),
@@ -114,10 +117,10 @@ class SparseGraph:
         new_senders = self._senders[mask]
         new_receivers = self._receivers[mask]
 
-        for i, v in enumerate(torch.unique_consecutive(new_senders)):
+        for i, v in enumerate(torch.unique(torch.cat([new_senders, new_receivers]))):
             new_senders[new_senders == v] = i
             new_receivers[new_receivers == v] = i
-
+        
         return SparseGraph(
             new_senders,
             new_receivers,
