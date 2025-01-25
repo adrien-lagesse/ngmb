@@ -1,15 +1,14 @@
 from typing import NamedTuple, Self
 
 import torch
+from PCQM4Mv2PEDataset import PCQM4Mv2PEDataset
 from torch.utils.data import DataLoader
 from torch_geometric.data import Data as PygData
-from torch_geometric.datasets import AQSOL
-from torch_geometric.transforms import AddRandomWalkPE
 
 
-class AqsolBatch(NamedTuple):
+class PCQM4Mv2Batch(NamedTuple):
     x: torch.Tensor  # values between 0 and 64 representing atom type
-    random_walk_pe: torch.Tensor
+    pe: torch.Tensor
     y: torch.Tensor
     edge_index: torch.LongTensor  # shape [2, num_edge_in_batch]
     node_mask: torch.BoolTensor  # shape [batch_len, max_nb_atom]
@@ -17,9 +16,9 @@ class AqsolBatch(NamedTuple):
     graph_batch: torch.LongTensor
 
     def to(self, device: torch.device) -> Self:
-        return AqsolBatch(
+        return PCQM4Mv2Batch(
             x=self.x.to(device),
-            random_walk_pe=self.random_walk_pe.to(device),
+            pe=self.pe.to(device),
             y=self.y.to(device),
             edge_index=self.edge_index.to(device),
             node_mask=self.node_mask.to(device),
@@ -31,9 +30,9 @@ class AqsolBatch(NamedTuple):
         return len(self.node_mask)
 
 
-def collate_fn(elems: list[PygData]) -> AqsolBatch:
-    x = torch.cat([elem.x for elem in elems])
-    random_walk_pe = torch.cat([elem.random_walk_pe for elem in elems])
+def collate_fn(elems: list[PygData]) -> PCQM4Mv2Batch:
+    x = torch.cat([elem.x for elem in elems]).float()
+    pe = torch.cat([elem.pe for elem in elems]).float()
     y = torch.FloatTensor([elem.y for elem in elems])
 
     edge_index_l = []
@@ -58,19 +57,18 @@ def collate_fn(elems: list[PygData]) -> AqsolBatch:
 
     node_mask = torch.stack(node_mask_l)
 
-    batch = torch.cat([torch.full_like(elem.x, i) for i, elem in enumerate(elems)])
+    batch = torch.cat([torch.full((len(elem.x),), i) for i, elem in enumerate(elems)])
     graph_batch = torch.cat(graph_batch_l)
 
     assert len(batch) == len(x), f"{x.shape}, {batch.shape}"
 
-    return AqsolBatch(x,random_walk_pe, y, edge_index, node_mask, batch, graph_batch)
+    return PCQM4Mv2Batch(x, pe, y, edge_index, node_mask, batch, graph_batch)
 
 
-def setup_data(batch_size: int) -> tuple[DataLoader, DataLoader]:
-    AQSOL_ROOT = "data/AQSOL"
-    transform = AddRandomWalkPE(32)
-    train_dataset = AQSOL(root=AQSOL_ROOT, split="train", transform=transform)
-    validation_dataset = AQSOL(root=AQSOL_ROOT, split="test", transform=transform)
+def setup_data(batch_size: int, pe_dim, model, device) -> tuple[DataLoader, DataLoader]:
+    PCQM4Mv2PE_PCQM4Mv2_ROOT = ".tmp/PCQM4Mv2"
+    train_dataset = PCQM4Mv2PEDataset(pe_dim, model, device, root=PCQM4Mv2PE_PCQM4Mv2_ROOT, split="train")
+    validation_dataset = PCQM4Mv2PEDataset(pe_dim, model, device,root=PCQM4Mv2PE_PCQM4Mv2_ROOT, split="val")
 
     train_loader = DataLoader(
         train_dataset,

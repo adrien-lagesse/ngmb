@@ -49,41 +49,38 @@ def batch_size(db_name):
     else:
         return 100
     
-# datasets = ["ER", "PCQM4Mv2", "OGBN-Arxiv", "AQSOL", "CoraFull"]
-# models = ["GCN", "GIN", "GatedGCN", "GAT", "GATv2"]
-# noises = [0.04, 0.06, 0.08, 0.12, 0.15, 0.18, 0.24, 0.3]
+datasets = ["CoraFull"]
+models = ["GIN"]
+noises = [0.04, 0.06, 0.08]
 
-
-
-# configs = list(itertools.product(datasets, models, noises))
-configs = [["ER", "GAT", 0.12], ["OGBN-Arxiv", "GatedGCN", 0.15]]
+configs = list(itertools.product(datasets, models, noises))
 
 @click.command()
 @click.option('-i')
 def work(i: int):
     time.sleep(random.randint(5,45))
     data, model, noise = configs[int(i)]
-    ngmb.graph_matching.train(
-        dataset= dataset(data, noise),
-        experiment="32-DIM-RETRAIN",
-        run_name=f"{data}-{model}-{noise}",
-        epochs=300,
-        batch_size=batch_size(data),
-        cuda=True,
-        log_frequency=25,
-        profile=True,
-        model=model,
-        layers=4,
-        features=dim(model),
-        heads=8,
-        #out_features=outlayer(data),
-        out_features=32,
-        optimizer="adam-one-cycle",
-        max_lr=3e-3,
-        start_factor=5,
-        end_factor=500,
-        grad_clip=0.1
-    )
+    for _ in range(10):
+        ngmb.graph_matching.train(
+            dataset= dataset(data, noise),
+            experiment="RERUN-GIN-CORAFULL",
+            run_name=f"{model}-{noise}",
+            epochs=300,
+            batch_size=batch_size(data),
+            cuda=True,
+            log_frequency=25,
+            profile=True,
+            model=model,
+            layers=4,
+            features=dim(model),
+            heads=8,
+            out_features=outlayer(data),
+            optimizer="adam-one-cycle",
+            max_lr=1e-2,
+            start_factor=5,
+            end_factor=500,
+            grad_clip=0.1
+        )
 
 
 if __name__ == "__main__":

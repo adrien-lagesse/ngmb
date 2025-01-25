@@ -131,6 +131,7 @@ dmypy.json
 .pyre/
 
 # Project related
+data
 mlruns/
 sbatch-output
 sbatch-error

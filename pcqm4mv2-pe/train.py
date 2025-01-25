@@ -15,10 +15,10 @@ from ngmb.models import GAT, GatedGCN, LaplacianEmbeddings
 DEVICE = "cuda"
 EPOCHS = 250
 FEATURES = 65
-BATCH_SIZE = 100
-LR = 5e-4
-DROPOUT = 0.05
-REG = 0.0005
+BATCH_SIZE = 300
+LR = 2e-4
+DROPOUT = 0
+REG = 0.00001
 
 
 class MolGCN(torch.nn.Module):
@@ -26,7 +26,7 @@ class MolGCN(torch.nn.Module):
         super().__init__()
         self.hidden_dim = hidden_dim
 
-        self.embeddings = torch.nn.Embedding(65, input_dim, max_norm=1)
+        self.l1 = torch.nn.Linear(9, input_dim)
         self.dropout1 = torch.nn.Dropout(dropout)
         self.conv1 = GCNConv(input_dim, hidden_dim)
         self.conv2 = GCNConv(hidden_dim, hidden_dim)
@@ -39,7 +39,7 @@ class MolGCN(torch.nn.Module):
         self.final_linear = torch.nn.Linear(hidden_dim, 1)
 
     def forward(self, batch) -> torch.Tensor:
-        x = self.embeddings(batch.x)
+        x = self.l1(batch.x)
         x = self.dropout1(x)
         x = torch.nn.functional.relu(self.conv1(x, batch.edge_index))
         x = torch.nn.functional.relu(self.conv2(x, batch.edge_index))
@@ -57,7 +57,7 @@ class MolGAT(torch.nn.Module):
         super().__init__()
         self.hidden_dim = hidden_dim
 
-        self.embeddings = torch.nn.Embedding(65, input_dim, max_norm=1)
+        self.l1 = torch.nn.Linear(9, input_dim)
         self.dropout1 = torch.nn.Dropout(dropout)
         self.conv1 = GATConv(input_dim, hidden_dim // 8, 8)
         self.conv2 = GATConv(hidden_dim, hidden_dim // 8, 8)
@@ -70,7 +70,7 @@ class MolGAT(torch.nn.Module):
         self.final_linear = torch.nn.Linear(hidden_dim, 1)
 
     def forward(self, batch) -> torch.Tensor:
-        x = self.embeddings(batch.x)
+        x = self.l1(batch.x)
         x = self.dropout1(x)
         x = torch.nn.functional.relu(self.conv1(x, batch.edge_index))
         x = torch.nn.functional.relu(self.conv2(x, batch.edge_index))
@@ -86,7 +86,7 @@ class MolGAT(torch.nn.Module):
 class MolTransformer(torch.nn.Module):
     def __init__(self, input_dim=32, hidden_dim=72, dropout=0) -> None:
         super().__init__()
-        self.embeddings = torch.nn.Embedding(65, input_dim, max_norm=1)
+        self.l1 = torch.nn.Linear(9, input_dim)
 
         self.transformer = architectures.Transformer(
             input_dim=input_dim,
@@ -98,7 +98,7 @@ class MolTransformer(torch.nn.Module):
         )
 
     def forward(self, batch) -> torch.Tensor:
-        x = self.embeddings(batch.x)
+        x = self.l1(batch.x)
 
         batch_len, max_num_atom = batch.node_mask.size()
 
@@ -124,7 +124,7 @@ class MolTransformerLAPE(torch.nn.Module):
     def __init__(self, input_dim=32, hidden_dim=72, dropout=0) -> None:
         super().__init__()
 
-        self.embeddings = torch.nn.Embedding(65, input_dim, max_norm=1)
+        self.l1 = torch.nn.Linear(9, input_dim)
         self.reshape_layer = torch.nn.Linear(input_dim,32)
 
         self.transformer = architectures.Transformer(
@@ -137,7 +137,7 @@ class MolTransformerLAPE(torch.nn.Module):
         )
 
     def forward(self, batch) -> torch.Tensor:
-        x = self.embeddings(batch.x)
+        x = self.l1(batch.x)
 
         batch_len = len(batch)
         max_nb_atom = int(batch.node_mask.shape[1])
@@ -173,44 +173,12 @@ class MolTransformerLAPE(torch.nn.Module):
             padded_sequences, batch.node_mask.unsqueeze(-1).unsqueeze(1)
         )
 
-class MolTransformerRWPE(torch.nn.Module):
-    def __init__(self, input_dim=32, hidden_dim=72, dropout=0) -> None:
-        super().__init__()
-
-        self.embeddings = torch.nn.Embedding(65, input_dim, max_norm=1)
-
-        self.transformer = architectures.Transformer(
-            input_dim=32,
-            d_model=hidden_dim,
-            num_heads=hidden_dim // 8,
-            num_layers=5,
-            d_ff=hidden_dim,
-            dropout=dropout,
-        )
-
-    def forward(self, batch) -> torch.Tensor:
-        batch_len = len(batch)
-
-        x = self.embeddings(batch.x) + batch.random_walk_pe
-
-        batch_len, max_num_atom = batch.node_mask.size()
-
-        padded_sequences = torch.zeros(
-            (batch_len, max_num_atom, x.shape[1]), device=x.device, dtype=torch.float
-        )
-        padded_sequences = padded_sequences.masked_scatter(
-            batch.node_mask.unsqueeze(-1), x
-        )  # batch_len,max_nb_atom, features_dim
-
-        return self.transformer(
-            padded_sequences, batch.node_mask.unsqueeze(-1).unsqueeze(1)
-        )
 
 class MolTransformerGAPE(torch.nn.Module):
     def __init__(self, input_dim=32, hidden_dim=72, dropout=0) -> None:
         super().__init__()
 
-        self.embeddings = torch.nn.Embedding(65, input_dim, max_norm=1)
+        self.l1 = torch.nn.Linear(9, input_dim)
 
         self.transformer = architectures.Transformer(
             input_dim=input_dim,
@@ -222,7 +190,7 @@ class MolTransformerGAPE(torch.nn.Module):
         )
 
     def forward(self, batch) -> torch.Tensor:
-        x = self.embeddings(batch.x)
+        x = self.l1(batch.x)
 
         batch_len = len(batch)
         max_nb_atom = int(batch.node_mask.shape[1])
@@ -259,10 +227,10 @@ class MolTransformerGAPE(torch.nn.Module):
         )
 
 class MolTransformerGAPEOther(torch.nn.Module):
-    def __init__(self, input_dim=32, hidden_dim=72, dropout=0, *, gape_model) -> None:
+    def __init__(self, input_dim=32, hidden_dim=72, dropout=0, *, gape_model) -> None: # hidden_dim=256
         super().__init__()
 
-        self.embeddings = torch.nn.Embedding(65, 32, max_norm=1)
+        self.l1 = torch.nn.Linear(9, input_dim)
 
         self.reshape_layer = torch.nn.Linear(input_dim, 32)
 
@@ -278,7 +246,7 @@ class MolTransformerGAPEOther(torch.nn.Module):
         self.gape_model = [gape_model]
 
     def forward(self, batch) -> torch.Tensor:
-        x = self.embeddings(batch.x)
+        x = self.l1(batch.x)
 
         batch_len = len(batch)
         max_nb_atom = int(batch.node_mask.shape[1])
@@ -328,7 +296,7 @@ load_model(gape_encoding_ogbnarxiv, "/home/jlagesse/ngmb/mlruns/9770787581284124
 gape_encoding_ogbnarxiv  = gape_encoding_ogbnarxiv.to(DEVICE).eval()
 
 def main(model_name):
-    mlflow.set_experiment(experiment_name="RWPE-AQSOL")
+    mlflow.set_experiment(experiment_name="PE-PCQM4Mv2-PCQM4Mv2")
 
     with mlflow.start_run(run_name=model_name) as _run:
         mlflow.log_params(
@@ -352,16 +320,14 @@ def main(model_name):
             model = MolTransformer()
         if model_name == "Transformer-LAPE":
             model = MolTransformerLAPE()
-        if model_name == "Transformer-RWPE":
-            model = MolTransformerRWPE()
         if model_name == "Transformer-GAPE-ER":
-            model = MolTransformerGAPEOther(input_dim=32, hidden_dim=72, gape_model=gape_encoding_er)
+            model = MolTransformerGAPEOther(input_dim=32, gape_model=gape_encoding_er)
         if model_name == "Transformer-GAPE-OGBN-Arxiv":
-            model = MolTransformerGAPEOther(input_dim=32, hidden_dim=72, gape_model=gape_encoding_ogbnarxiv)
+            model = MolTransformerGAPEOther(input_dim=32, gape_model=gape_encoding_ogbnarxiv)
         if model_name == "Transformer-GAPE-PCQM4Mv2":
-            model = MolTransformerGAPEOther(input_dim=32, hidden_dim=72, gape_model=gape_encoding_pcqm4mv2, dropout=0.05)
+            model = MolTransformerGAPEOther(input_dim=32, gape_model=gape_encoding_pcqm4mv2)
         if model_name == "Transformer-GAPE-AQSOL":
-            model = MolTransformerGAPEOther(input_dim=32, hidden_dim=72, gape_model=gape_encoding_model)
+            model = MolTransformerGAPEOther(input_dim=32, gape_model=gape_encoding_model)
         
         model = model.to(DEVICE)
 
@@ -381,7 +347,6 @@ def main(model_name):
             for _, batch in enumerate(train_loader):
                 batch = batch.to(DEVICE)
                 model.zero_grad()
-
                 prediction = model.forward(batch)
                 loss = loss_fn(prediction, batch.y)
                 losses.append(float(loss))
@@ -406,10 +371,10 @@ def main(model_name):
                 maes.append(float((prediction - batch.y).abs().mean()))
             mlflow.log_metric("loss/val", statistics.mean(losses), epoch)
 
-models = ["GCN", "GAT", "Transformer", "Transformer-LAPE", "Transformer-RWPE", "Transformer-GAPE-AQSOL", "Transformer-GAPE-ER", "Transformer-GAPE-PCQM4Mv2", "Transformer-GAPE-OGBN-Arxiv"]
+models = ["GCN", "GAT", "Transformer", "Transformer-LAPE", "Transformer-GAPE-AQSOL", "Transformer-GAPE-ER", "Transformer-GAPE-PCQM4Mv2", "Transformer-GAPE-OGBN-Arxiv"]
 if __name__ == "__main__":
     with torch.autograd.set_detect_anomaly(True):
         for model in ["Transformer-GAPE-PCQM4Mv2"]:
-            print("Running Model: {model}")
             for _ in range(10):
+                print(f"Running Model: {model}")
                 main(model)

@@ -127,6 +127,10 @@ class SparseGraph:
             max(int(torch.max(new_senders)), int(torch.max(new_receivers))) + 1,
         )
 
+def safe_max(tensor):
+    if tensor.numel() == 0:  # Check if the tensor is empty
+        return torch.tensor(float('-inf'))  # Return -inf for empty tensors
+    return torch.max(tensor)
 
 class BatchedSparseGraphs:
     """
@@ -197,8 +201,8 @@ class BatchedSparseGraphs:
             and orders.dim() == 1
         ), "all arguments should have a dimension of 1"
         assert (
-            int(torch.max(senders) + 1) <= int(orders.sum())
-            and int(torch.max(receivers) + 1) <= int(orders.sum())
+            float(safe_max(senders) + 1) <= float(orders.sum())
+            and float(safe_max(receivers) + 1) <= float(orders.sum())
         ), "'senders' and 'receivers' refer to a node bigger than the batched graph order"
         assert (
             receivers.device == senders.device
